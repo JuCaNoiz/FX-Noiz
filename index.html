@@ -116,12 +116,22 @@ const App = () => {
       };
 
       // Realizar la llamada a la API de Gemini
-      const apiKey = ""; // La API key se inyecta automáticamente en el entorno de Canvas
-      // Si el error 401/403 persiste, la API Key NO está configurada correctamente en el entorno de Canvas.
-      // ¡Es crucial que revises las variables de entorno de tu panel de Canvas para tu API Key de Gemini!
-      if (!apiKey) {
-        console.warn('Advertencia: La API Key está vacía. Esto es lo esperado si Canvas la inyecta, pero si el error 401 persiste, es la causa.');
+      const apiKey = curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
+  -H 'Content-Type: application/json' \
+  -H 'X-goog-api-key: GEMINI_API_KEY' \
+  -X POST \
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Explain how AI works in a few words"
+          }
+        ]
       }
+    ]
+  }'
+    }
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
       console.log('URL de la API construida:', apiUrl); // Log para depurar la URL completa
 
@@ -412,5 +422,3 @@ const App = () => {
     </div>
   );
 };
-
-export default App;
