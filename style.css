@@ -1,0 +1,548 @@
+/* Estilos generales del cuerpo */
+body {
+    font-family: 'Courier', sans-serif;
+    background-color: #00050d; /* Fondo oscuro */
+    color: #fffffc; /* Texto claro */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+/* Contenedor principal para organizar el layout */
+.main-container {
+    display: flex;
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
+    gap: 20px; /* Espacio entre las secciones */
+    justify-content: center;
+    width: 100%;
+    max-width: 1200px; /* Ancho máximo para el contenido */
+}
+/* Estilos para los círculos de las notas en SVG (círculo exterior) */
+.note-circle {
+    transition: fill 0.2s ease-in-out;
+    cursor: pointer;
+    fill: #63728a; /* Color de fondo por defecto de la nota mayor (más claro) */
+    stroke: #a0aec0; /* Borde de la nota */
+    stroke-width: 2;
+    border-radius: 9999px;
+}
+/* Estilos para el texto de las notas mayores */
+.note-text {
+    fill: #f1f2f0; /* Color de texto más claro */
+    pointer-events: none;
+    font-size: 1.25rem;
+    font-weight: 600;
+    user-select: none;
+}
+/* Efecto al pasar el mouse sobre el grupo de la nota mayor */
+.note-group.major:hover .note-circle {
+    fill: #63b3ed; /* Azul claro al pasar el mouse */
+}
+/* Estilos para los círculos de las notas del círculo interno (menores) */
+.minor-note-circle {
+    transition: fill 0.2s ease-in-out;
+    cursor: pointer;
+    fill: #4a5568; /* Un gris más oscuro para el fondo de la nota menor (más claro) */
+    stroke: #a0aec0;
+    stroke-width: 2;
+    border-radius: 9999px;
+}
+/* Estilos para el texto de las notas menores */
+.minor-note-text {
+    fill: #e2e8f0;
+    pointer-events: none;
+    font-size: 1rem;
+    font-weight: 600;
+    user-select: none;
+}
+/* Efecto al pasar el mouse sobre el grupo de la nota menor */
+.note-group.minor:hover .minor-note-circle {
+    fill: #9f7aea; /* Morado claro al pasar el mouse */
+}
+
+/* NUEVOS ESTILOS PARA LOS COLORES DE RESALTADO */
+/* Tónica Mayor Seleccionada */
+.note-group.highlighted-tonic-major .note-circle {
+    fill: #f6ad55; /* Naranja */
+    stroke: #ed8936;
+}
+.note-group.highlighted-tonic-major .note-text {
+    fill: #1a202c;
+}
+
+/* Otros Acordes Mayores Diatónicos (IV, V) */
+.note-group.highlighted-other-major-diatonic .note-circle {
+    fill: #63b3ed; /* Azul claro */
+    stroke: #4299e1;
+}
+.note-group.highlighted-other-major-diatonic .note-text {
+    fill: #1a202c;
+}
+
+/* Acordes Menores Diatónicos (ii, iii, vi) - Ahora incluye el vi */
+.note-group.highlighted-other-minor-diatonic .minor-note-circle {
+    fill: #48bb78; /* Verde */
+    stroke: #38a169;
+}
+.note-group.highlighted-other-minor-diatonic .minor-note-text {
+    fill: #1a202c;
+}
+
+/* Acorde Disminuido Diatónico (vii°) */
+.note-group.highlighted-diminished-diatonic .minor-note-circle {
+    fill: #f7079f; /* Magenta vibrante */
+    stroke: #b81fb3;
+}
+.note-group.highlighted-diminished-diatonic .minor-note-text {
+    fill: #1a202c;
+}
+
+
+/* Estilo para el círculo central del SVG */
+.center-circle {
+    fill: #2d3748; /* Gris más oscuro para el centro */
+    stroke: #a0aec0; /* Borde del círculo central */
+    stroke-width: 2;
+}
+/* Estilo para las líneas que conectan las notas del círculo exterior */
+.line {
+    stroke: #10bd04; /* Color verde para las líneas */
+    stroke-width: 1;
+    opacity: 0.5; /* Ligeramente transparentes */
+}
+/* Estilo para las líneas que conectan mayor y menor relativa */
+.relative-line {
+    stroke: #63b3ed; /* Azul para conectar mayor y menor */
+    stroke-width: 1.5;
+    opacity: 0.7;
+}
+
+/* Estilos para el diapasón */
+#fretboard-svg {
+    background-color: #5a3e2b; /* Color madera del diapasón */
+    border-radius: 8px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+/* Estilos para la sección de composición */
+.composition-section {
+    background-color: #2d3748; /* Fondo más oscuro para la sección de composición */
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    width: 100%;
+}
+/* Estilos para el pentagrama simplificado */
+/* REMOVED: .staff-line, .treble-clef, .staff-note-text, .staff-chord-text */
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #f6ad55;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* Estilos para la tablatura */
+.tablature-text {
+    fill: #e2e8f0;
+    font-family: 'monospace'; /* Fuente monoespaciada para alineación */
+    font-size: 14px;
+}
+/* Estilos para los diagramas de acordes */
+.chord-diagram-svg {
+    border: 1px solid #a0aec0;
+    border-radius: 4px;
+    background-color: #2d3748;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    cursor: pointer; /* Make it clickable */
+}
+.fret-line {
+    stroke: #e2e8f0;
+    stroke-width: 1;
+}
+.string-line {
+    stroke: #a0aec0;
+    stroke-width: 1.5;
+}
+.nut-line {
+    stroke: #e2e8f0;
+    stroke-width: 3;
+}
+.finger-dot {
+    fill: #f6ad55;
+    stroke: #ed8936;
+    stroke-width: 1;
+}
+.open-string-marker {
+    fill: none;
+    stroke: #e2e8f0;
+    stroke-width: 1.5;
+}
+.muted-string-marker {
+    fill: #e2e8f0;
+    font-size: 16px;
+    font-weight: bold;
+}
+/* Estilos para el patrón de rasgueo */
+.strum-pattern-svg {
+    background-color: #2d3748;
+    border-radius: 4px;
+    padding: 10px;
+}
+.strum-arrow {
+    fill: #e2e8f0;
+}
+.strum-beat-text {
+    fill: #a0aec0;
+    font-size: 14px;
+}
+.strum-rest-symbol {
+    fill: #e2e8f0;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Estilos para el afinador */
+.tuner-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.tuner-content {
+    background-color: #2d3748;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    text-align: center;
+}
+.tuner-close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e2e8f0;
+    cursor: pointer;
+}
+.tuner-note-display {
+    font-size: 4rem;
+    font-weight: bold;
+    color: #f6ad55;
+    margin-bottom: 10px;
+}
+.tuner-cents-display {
+    font-size: 1.5rem;
+    color: #a0aec0;
+    margin-bottom: 20px;
+}
+.tuner-needle-container {
+    width: 80%;
+    max-width: 300px;
+    height: 50px;
+    background-color: #1a202c;
+    border-radius: 25px;
+    margin: 20px auto;
+    position: relative;
+    overflow: hidden;
+}
+.tuner-needle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform-origin: bottom center;
+    width: 4px;
+    height: 40px;
+    background-color: #f6ad55;
+    transition: transform 0.1s linear;
+}
+.tuner-center-line {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background-color: #63b3ed;
+}
+.tuner-range-indicator {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background-color: rgba(99, 179, 237, 0.3); /* blue-300 with transparency */
+    border-radius: 25px;
+}
+.tuner-range-indicator.flat {
+    left: 0;
+}
+.tuner-range-indicator.sharp {
+    right: 0;
+}
+.tuner-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+.tuner-controls select, .tuner-controls button, .tuner-controls input[type="range"] {
+    padding: 10px 15px;
+    border-radius: 8px;
+    background-color: #4a5568;
+    color: #e2e8f0;
+    border: 1px solid #63b3ed;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.tuner-controls select:focus, .tuner-controls button:focus, .tuner-controls input[type="range"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.5);
+}
+.tuner-controls button:hover {
+    background-color: #63b3ed;
+}
+
+/* Metronome styles */
+.metronome-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.metronome-content {
+    background-color: #2d3748;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    text-align: center;
+}
+.metronome-close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e2e8f0;
+    cursor: pointer;
+}
+.metronome-display {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #f6ad55;
+    margin-bottom: 20px;
+}
+.metronome-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+.metronome-controls input[type="range"] {
+    width: 80%;
+    max-width: 300px;
+    -webkit-appearance: none;
+    height: 10px;
+    background: #4a5568;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+.metronome-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #63b3ed;
+    cursor: pointer;
+}
+.metronome-controls input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #63b3ed;
+    cursor: pointer;
+}
+.metronome-beat-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #4a5568;
+    display: inline-block;
+    margin: 0 5px;
+    transition: background-color 0.1s;
+}
+.metronome-beat-indicator.active {
+    background-color: #f6ad55;
+}
+.metronome-beat-indicator.first-beat {
+    background-color: #63b3ed;
+}
+/* Estilos para la tabla de acordes diatónicos */
+.diatonic-chords-section {
+    background-color: #2d3748;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    width: 100%;
+}
+.diatonic-chords-table {
+    width: 100%;
+    text-align: center;
+    border-collapse: collapse;
+}
+.diatonic-chords-table th, .diatonic-chords-table td {
+    border: 1px solid #4a5568;
+    padding: 8px;
+}
+.diatonic-chords-table th {
+    background-color: #4a5568;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+.diatonic-chords-table td {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+.diatonic-chords-table .chord-name {
+    font-weight: bold;
+    color: #f6ad55; /* Naranja para los nombres de acordes */
+}
+
+/* Estilos para las armaduras de clave en el círculo */
+.key-signature-group {
+    pointer-events: none; /* No debe ser clicable */
+    user-select: none;
+}
+.mini-staff-line {
+    stroke: #a0aec0;
+    stroke-width: 0.5;
+}
+.mini-clef {
+    fill: #a0aec0;
+}
+.key-symbol {
+    fill: #a0aec0;
+    font-size: 10px; /* Tamaño pequeño para los símbolos */
+    font-family: 'Arial', sans-serif; /* Fuente genérica para los símbolos */
+    font-weight: bold;
+}
+
+/* Fretboard legend styles */
+.fretboard-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #2d3748;
+    border-radius: 8px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+}
+.legend-color-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid #a0aec0;
+}
+/* New styles for the Circle of Fifths legend */
+.circle-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #2d3748;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    color: #fff;
+}
+
+/* Chord Options Modal */
+.chord-options-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.chord-options-content {
+    background-color: #2d3748;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 800px;
+    position: relative;
+    text-align: center;
+}
+.chord-options-close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #e2e8f0;
+    cursor: pointer;
+}
+.chord-options-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    
+    /* Footer styles */
+.app-footer {
+    margin-top: 40px;
+    padding: 20px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #666666; /* Gris para el texto del footer */
+    width: 100%;
+    background-color: #0A0A0A; /* Fondo del footer */
+    border-top: 1px solid #222222; /* Línea separadora sutil */
+}
