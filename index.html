@@ -1,424 +1,256 @@
-import React, { useState } from 'react';
-
-// Componente principal de la aplicación
-const App = () => {
-  // Estados para el artista, la canción, los resultados y el estado de carga
-  const [artist, setArtist] = useState('David Gilmour'); // Valores por defecto para probar
-  const [song, setSong] = useState('Time');   // Valores por defecto para probar
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  /**
-   * Maneja la búsqueda de efectos de guitarra.
-   * Llama a la API de Gemini para obtener la configuración de efectos.
-   */
-  const handleSearch = async () => {
-    // Limpiar resultados anteriores y errores
-    setResults(null);
-    setError('');
-
-    // Validar que ambos campos estén llenos
-    if (!artist.trim() || !song.trim()) {
-      setError('¡Échale ganas! Por favor, ingresa tanto el artista como la canción.');
-      return;
-    }
-
-    setLoading(true); // Activar el estado de carga
-
-    try {
-      // Construir el prompt para la IA, pidiéndole que genere la información con la estructura deseada
-      const prompt = `Como un experto en configuración de efectos de guitarra, genera la configuración de efectos y sus parámetros para la canción '${song}' del artista '${artist}'. La respuesta debe seguir estrictamente la siguiente estructura JSON para una sola canción. Si no hay información para alguna parte, omítela o deja los arreglos vacíos según corresponda.
-
-      {
-        "artista": "Nombre del Artista",
-        "tema": "Nombre del Tema",
-        "cadena_efectos": [
-          {
-            "seccion": "Nombre de la Sección (ej. Intro/Verso, Coro, Solo)",
-            "objetivo": "Descripción del sonido deseado para la sección",
-            "cadena": [
-              {
-                "efecto": "Tipo de Efecto (ej. Compresor, Overdrive, Chorus, Delay, Reverb)",
-                "valores": {
-                  "parametro1": "valor1",
-                  "parametro2": "valor2"
-                  // ... otros parámetros específicos del efecto
-                },
-                "activo": true/false (si aplica),
-                "opcional": true/false (si aplica)
-              }
-              // ... más efectos en la cadena para esta sección
-            ]
-          }
-          // ... más secciones de la canción
-        ],
-        "tip_extra": {
-          "volumen_guitarra": "Sugerencia de volumen",
-          "tono_guitarra": "Sugerencia de tono",
-          "pastilla": "Sugerencia de pastilla"
-        }
-      }
-      `;
-
-      // Definir el esquema de respuesta esperado en formato JSON, basado en el JSON que proporcionaste
-      const responseSchema = {
-        type: "OBJECT",
-        properties: {
-          artista: { type: "STRING" },
-          tema: { type: "STRING" },
-          cadena_efectos: {
-            type: "ARRAY",
-            items: {
-              type: "OBJECT",
-              properties: {
-                seccion: { type: "STRING" },
-                objetivo: { type: "STRING" },
-                cadena: {
-                  type: "ARRAY",
-                  items: {
-                    type: "OBJECT",
-                    properties: {
-                      efecto: { type: "STRING" },
-                      valores: {
-                        type: "OBJECT",
-                        additionalProperties: {
-                          oneOf: [{ type: "STRING" }, { type: "OBJECT" }, { type: "BOOLEAN" }] // Permite strings, objetos o booleanos
-                        }
-                      },
-                      activo: { type: "BOOLEAN" },
-                      opcional: { type: "BOOLEAN" }
-                    },
-                    required: ["efecto", "valores"]
-                  }
-                }
-              },
-              required: ["seccion", "objetivo", "cadena"]
-            }
-          },
-          tip_extra: {
-            type: "OBJECT",
-            additionalProperties: { type: "STRING" }
-          }
-        },
-        required: ["artista", "tema", "cadena_efectos"]
-      };
-
-      // Configuración del payload para la API de Gemini
-      const chatHistory = [];
-      chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-      const payload = {
-        contents: chatHistory,
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: responseSchema
-        }
-      };
-
-      // Realizar la llamada a la API de Gemini
-      const apiKey = curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent" \
-  -H 'Content-Type: application/json' \
-  -H 'X-goog-api-key: GEMINI_API_KEY' \
-  -X POST \
-  -d '{
-    "contents": [
-      {
-        "parts": [
-          {
-            "text": "Explain how AI works in a few words"
-          }
-        ]
-      }
-    ]
-  }'
-    }
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-      console.log('URL de la API construida:', apiUrl); // Log para depurar la URL completa
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      // Verificar si la respuesta HTTP fue exitosa (código 200-299)
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Error de API: ${response.status} ${response.statusText}`, errorBody);
-        if (response.status === 401 || response.status === 403) {
-            console.error('Detalle del error 401/403: La API Key probablemente NO está configurada o es inválida en el entorno de Canvas.');
-            setError(`¡Acceso denegado! La API Key no es válida o no tiene permisos. Por favor, revisa y configura tu API Key de Gemini en las variables de entorno del panel de Canvas. Error: ${response.status} ${response.statusText}.`);
-        } else {
-            setError(`¡Algo salió mal! El servidor de la IA respondió con un error inesperado: ${response.status} ${response.statusText}.`);
-        }
-        setLoading(false);
-        return;
-      }
-
-      let result;
-      try {
-        const rawText = await response.text(); // Leer como texto primero
-        // La API puede devolver la respuesta JSON envuelta en ```json\n...\n```
-        const jsonMatch = rawText.match(/```json\n([\s\S]*?)\n```/);
-        if (jsonMatch && jsonMatch[1]) {
-            result = JSON.parse(jsonMatch[1]);
-        } else {
-            result = JSON.parse(rawText); // Si no está envuelto, intentar parsear directamente
-        }
-      } catch (jsonParseError) {
-        console.error('Error al parsear la respuesta JSON de la API de Gemini:', jsonParseError);
-        setError('¡Algo salió mal al procesar la respuesta de la IA! El formato no es el esperado. Intenta de nuevo.');
-        setLoading(false);
-        return;
-      }
-
-      // La IA debería devolver un objeto con la estructura de una canción
-      if (result && result.cadena_efectos) {
-        setResults(result); // Guardar el objeto de la canción directamente
-      } else {
-        setError('¡Uy! La IA no pudo generar una configuración válida con la estructura esperada. Intenta con otro artista o canción, o sé más específico en tu búsqueda.');
-      }
-    } catch (err) {
-      console.error('Error general al llamar a la API de Gemini:', err);
-      setError('¡Algo salió mal! No pude conectar con la IA. Checa tu conexión o inténtalo de nuevo más tarde.');
-    } finally {
-      setLoading(false); // Desactivar el estado de carga
-    }
-  };
-
-  // Función para renderizar los parámetros de un efecto en formato de "perillas" (knobs)
-  const renderParams = (obj) => {
-    if (typeof obj !== 'object' || obj === null) {
-      return null;
-    }
-    return (
-      <div className="param-container">
-        {Object.entries(obj).map(([key, value]) => (
-          <div key={key} className="param">
-            <div className="param-name">{key}</div>
-            <div className="param-value">
-              {typeof value === 'object' && value !== null
-                ? Object.entries(value).map(([eqParam, eqVal]) => `${eqParam}: ${eqVal}`).join(", ")
-                : String(value)}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black text-white p-4 font-inter">
-      <style>
-        {`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-          /* Estilo para los "knobs" o perillas simuladas, ajustado para Tailwind */
-          .param-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 8px;
-          }
-          .param {
-            background: #f0f0f0;
-            border-radius: 8px;
-            width: 80px;
-            text-align: center;
-            padding: 6px 4px;
-            box-shadow: inset 0 0 5px #bbb;
-            font-size: 0.85rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-          }
-          .param-name {
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 6px;
-            word-break: break-word; /* Asegura que nombres largos no desborden */
-          }
-          .param-value {
-            background: #ddd;
-            border-radius: 50%;
-            width: 48px; /* Un poco más grande para mejor visibilidad */
-            height: 48px;
-            line-height: 48px; /* Centra el texto verticalmente */
-            margin: 0 auto;
-            font-weight: 700;
-            color: #222;
-            box-shadow:
-              inset 2px 2px 5px #fff,
-              inset -2px -2px 5px #aaa;
-            word-break: break-word; /* Asegura que valores largos no desborden */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2px; /* Pequeño padding para el texto */
-            font-size: 0.75rem; /* Ajusta el tamaño de la fuente para que quepa */
-          }
-          /* Estilos para la tabla */
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background: #374151; /* bg-gray-700 */
-            color: #D1D5DB; /* text-gray-300 */
-            border-radius: 0.75rem; /* rounded-xl */
-            overflow: hidden; /* Para que los bordes redondeados se apliquen al contenido */
-          }
-          th, td {
-            border: 1px solid #4B5563; /* border-gray-600 */
-            padding: 12px;
-            vertical-align: top;
-            text-align: left;
-          }
-          th {
-            background: #1F2937; /* bg-gray-800 */
-            color: #F3F4F6; /* text-gray-100 */
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.875rem;
-          }
-          tr:nth-child(even) {
-            background-color: #4B5563; /* bg-gray-600 para filas pares */
-          }
-          details {
-            background-color: #4B5563; /* bg-gray-600 */
-            border-radius: 0.5rem; /* rounded-lg */
-            margin-bottom: 8px;
-            overflow: hidden;
-          }
-          summary {
-            background-color: #374151; /* bg-gray-700 */
-            padding: 10px 12px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #F3F4F6; /* text-gray-100 */
-            border-bottom: 1px solid #4B5563; /* border-gray-600 */
-          }
-          details[open] summary {
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
-          }
-          details > div {
-            padding: 12px;
-          }
-        `}
-      </style>
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-700">
-        <h1 className="text-4xl font-bold text-center mb-6 text-orange-400">
-          <span className="block mb-2">🎸 Guía de Efectos</span>
-          <span className="block">para Guitarristas 🤘</span>
-        </h1>
-
-        <p className="text-center text-gray-300 mb-8 text-lg">
-          ¡Arma tu sonido! Ingresa un artista y una canción para descubrir los efectos y parámetros que te harán sonar como un crack.
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G-Tools</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="max-w-6xl w-full bg-gray-800 rounded-lg shadow-xl p-6 md:p-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-white mb-6">G-Tolls</h1>
+        <p class="text-center text-lg mb-8 text-white">
+            Dale clic a cualquier nota en el círculo (mayor o menor) para ver los acordes diatónicos de esa tonalidad
         </p>
 
-        <div className="mb-6 space-y-4">
-          <div>
-            <label htmlFor="artist-input" className="block text-gray-300 text-sm font-semibold mb-2">
-              Artista (ej. Gustavo Cerati)
-            </label>
-            <input
-              id="artist-input"
-              type="text"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-              placeholder="Escribe el nombre del artista..."
-              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 text-white placeholder-gray-400 transition duration-300 ease-in-out"
-            />
-          </div>
-          <div>
-            <label htmlFor="song-input" className="block text-gray-300 text-sm font-semibold mb-2">
-              Canción (ej. Te Para Tres)
-            </label>
-            <input
-              id="song-input"
-              type="text"
-              value={song}
-              onChange={(e) => setSong(e.target.value)}
-              placeholder="Escribe el nombre de la canción..."
-              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 text-white placeholder-gray-400 transition duration-300 ease-in-out"
-            />
-          </div>
+        <div class="flex justify-center gap-4 mb-8">
+            <button id="open-tuner-button" class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96-1.425L12 18.354 7.373 21.18c-.996.608-2.231-.292-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.007Z" clip-rule="evenodd" />
+                </svg>
+                Afinador
+            </button>
+            <button id="open-metronome-button" class="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                </svg>
+                Metrónomo
+            </button>
         </div>
 
-        <button
-          onClick={handleSearch}
-          disabled={loading}
-          className={`w-full py-3 px-6 rounded-xl text-lg font-bold transition duration-300 ease-in-out
-            ${loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 active:bg-orange-800 shadow-lg hover:shadow-xl'}`}
-        >
-          {loading ? (
-            <div className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              ¡Cargando la magia!
-            </div>
-          ) : (
-            '¡Buscar Efectos!'
-          )}
-        </button>
+        <div class="main-container">
+            <div class="flex flex-col items-center w-full md:w-3/5 lg:w-1/2 p-4 bg-gray-700 rounded-lg shadow-md">
+                <div id="circle-container" class="flex justify-center items-center w-full aspect-square mx-auto mb-8">
+                    </div>
 
-        {error && (
-          <div className="mt-6 p-4 bg-red-800 rounded-xl text-red-200 text-center border border-red-700">
-            <p className="font-semibold">¡Error!</p>
-            <p>{error}</p>
-          </div>
-        )}
-
-        {results && (
-          <div className="mt-8 bg-gray-700 p-6 rounded-2xl shadow-inner border border-gray-600">
-            <h2 className="text-3xl font-bold text-orange-300 mb-4 text-center">
-              Configuración para "{results.tema}" de {results.artista}
-            </h2>
-            {results.cadena_efectos && results.cadena_efectos.length > 0 ? (
-              results.cadena_efectos.map((section, index) => (
-                <div key={index} className="mb-6 last:mb-0 bg-gray-800 p-4 rounded-xl border border-gray-600 shadow-md">
-                  <h3 className="text-2xl font-semibold text-orange-400 mb-2 capitalize">{section.seccion}</h3>
-                  <p className="text-gray-300 italic mb-3">Objetivo: {section.objetivo}</p>
-                  <p className="mb-2 font-semibold text-gray-200">Cadena de Efectos:</p>
-                  <ul className="space-y-2">
-                    {section.cadena && section.cadena.length > 0 ? (
-                      section.cadena.map((effect, effIndex) => (
-                        <li key={effIndex} className="bg-gray-700 p-3 rounded-lg border border-gray-500">
-                          <details>
-                            <summary className="text-xl font-bold text-orange-300">{effect.efecto}</summary>
-                            {renderParams(effect.valores)}
-                            {effect.activo !== undefined && <p className="text-gray-400 text-sm mt-1">Activo: {effect.activo ? 'Sí' : 'No'}</p>}
-                            {effect.opcional !== undefined && <p className="text-gray-400 text-sm">Opcional: {effect.opcional ? 'Sí' : 'No'}</p>}
-                          </details>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-gray-400 italic">No hay efectos definidos para esta sección.</li>
-                    )}
-                  </ul>
+                <div class="circle-legend">
+                    <div class="legend-item">
+                        <div class="legend-color-box" style="background-color: #f6ad55;"></div>
+                        <span>Tónica Mayor Seleccionada (I)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box" style="background-color: #63b3ed;"></div>
+                        <span>Acordes Mayores Diatónicos (IV, V)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box" style="background-color: #48bb78;"></div>
+                        <span>Acordes Menores Diatónicos (ii, iii, vi)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box" style="background-color: #f7079f;"></div>
+                        <span>Acorde Disminuido Diatónico (vii°)</span>
+                    </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-center text-gray-400 text-lg">
-                ¡La IA no encontró secciones de efectos para esta canción!
-              </p>
-            )}
 
-            {results.tip_extra && Object.keys(results.tip_extra).length > 0 && (
-              <div className="mt-6 bg-gray-800 p-4 rounded-xl border border-gray-600 shadow-md">
-                <h3 className="text-2xl font-semibold text-orange-400 mb-2">Tips Extra 💡</h3>
-                <ul className="list-disc list-inside text-gray-300 space-y-1 ml-4">
-                  {Object.entries(results.tip_extra).map(([tip, value]) => (
-                    <li key={tip}><span className="font-semibold">{tip}:</span> {value}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                <div class="mt-4 flex justify-center w-full">
+                    <button id="reset-button" class="px-6 py-3 bg-red-600 text-white font-bold rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
+                        Reiniciar Selección
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-col w-full md:w-2/5 lg:w-1/2 p-4 bg-gray-700 rounded-lg shadow-md">
+                <div id="info-display" class="bg-gray-700 p-4 rounded-lg shadow-inner text-center mb-4 text-white">
+                    <h2 class="text-2xl font-semibold mb-2" id="selected-key-title">Selecciona una tonalidad...</h2>
+                    <p class="text-xl" id="scale-notes-display">Las notas diatónicas aparecerán aquí.</p>
+                </div>
+
+                <div id="theory-explanation" class="bg-gray-700 p-4 rounded-lg shadow-inner text-left text-white">
+                    <h3 class="text-xl font-semibold mb-2">Teoría Musical de la Selección:</h3>
+                    <p id="current-theory-text" class="text-base">
+                        Aquí aparecerá una explicación breve sobre la tonalidad mayor o menor que selecciones en el círculo.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="diatonic-chords-section w-full max-w-4xl mx-auto mt-8 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold text-center mb-4 text-white">Acordes Diatónicos en <span id="diatonic-chords-key-display">--</span></h2>
+            <table class="diatonic-chords-table">
+                <thead>
+                    <tr>
+                        <th>I</th>
+                        <th>ii</th>
+                        <th>iii</th>
+                        <th>IV</th>
+                        <th>V</th>
+                        <th>vi</th>
+                        <th>vii°</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Tónica</td>
+                        <td>Supertónica</td>
+                        <td>Mediante</td>
+                        <td>Subdominante</td>
+                        <td>Dominante</td>
+                        <td>Superdominante</td>
+                        <td>Sensible</td>
+                    </tr>
+                    <tr id="diatonic-chords-row">
+                        </tr>
+                </tbody>
+            </table>
+            <p class="text-sm text-center text-white mt-2">
+                Estos son los acordes diatónicos estándar para la tonalidad seleccionada.
+            </p>
+        </div>
+
+        <div class="modes-fretboard-section w-full max-w-4xl mx-auto mt-8 bg-gray-700 rounded-lg p-4 shadow-lg">
+            <h2 class="text-3xl font-bold text-center mb-6 text-white">¡Explora los Modos Griegos!</h2>
+
+            <div class="flex flex-col items-center w-full mb-6 text-white">
+                <label for="mode-select" class="text-xl font-semibold mb-2">Elige tu modo griego:</label>
+                <select id="mode-select" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs">
+                    </select>
+            </div>
+
+            <div class="flex flex-col items-center w-full mb-6 text-white">
+                <label for="fretboard-position-select" class="text-xl font-semibold mb-2">Posición de la Escala:</label>
+                <select id="fretboard-position-select" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs">
+                    <option value="Full Fretboard">Diapasón Completo</option>
+                    <option value="Position 1">Posición 1</option>
+                    <option value="Position 2">Posición 2</option>
+                    <option value="Position 3">Posición 3</option>
+                    <option value="Position 4">Posición 4</option>
+                    <option value="Position 5">Posición 5</option>
+                </select>
+            </div>
+
+            <div id="fretboard-container" class="w-full flex justify-center items-center mb-4">
+                <svg id="fretboard-svg" width="100%" height="250" viewBox="0 0 900 250" class="rounded-lg shadow-lg"></svg>
+            </div>
+
+            <div class="fretboard-legend">
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #f6ad55;"></div>
+                    <span>Tónica</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #63b3ed;"></div>
+                    <span>Notas de Resolución</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #48bb78;"></div>
+                    <span>Notas de Descanso</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #9f7aea;"></div>
+                    <span>Otras Notas</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="composition-section w-full max-w-4xl mx-auto mt-8 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold text-center mb-4 text-white">Generador de Ideas para Rolas</h2>
+            <div class="flex flex-col items-center gap-4">
+                <label for="strumming-complexity" class="text-lg text-white">Complejidad del Patrón de Rasgueo:</label>
+                <select id="strumming-complexity" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs">
+                    <option value="facil">Fácil</option>
+                    <option value="intermedio">Intermedio</option>
+                    <option value="avanzado">Avanzado</option>
+                </select>
+                <button id="generate-song-idea-button" class="px-6 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-700 transition duration-300">
+                    Generar Idea de Rola
+                </button>
+            </div>
+            <div id="song-idea-display" class="mt-8 p-4 bg-gray-700 rounded-lg shadow-inner hidden">
+                <h3 class="text-xl font-bold mb-2 text-white" id="song-idea-title"></h3>
+                <p id="song-idea-info" class="text-base text-white"></p>
+                <div id="chord-diagrams-container" class="mt-4 flex flex-wrap gap-4 justify-center"></div>
+                <div id="strum-pattern-container" class="mt-4"></div>
+                <div id="tablature-container" class="mt-4"></div>
+                <div class="flex justify-center mt-4">
+                    <button id="export-midi-button" class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
+                        Exportar a MIDI
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tuner-modal" class="tuner-modal hidden">
+            <div class="tuner-content">
+                <button id="tuner-close-button" class="tuner-close-button">&times;</button>
+                <h2 class="text-2xl font-bold mb-4 text-white">Afinador Cromático</h2>
+                <div class="flex items-center justify-center gap-4 mb-4">
+                    <label for="tuner-tuning-select" class="text-lg text-white">Afinación:</label>
+                    <select id="tuner-tuning-select" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Standard (EADGBe)">Standard (EADGBe)</option>
+                        <option value="Half Step Down (Eb Standard)">Half Step Down (Eb Standard)</option>
+                        <option value="Full Step Down (D Standard)">Full Step Down (D Standard)</option>
+                    </select>
+                    <label for="tuner-a4-frequency" class="text-lg text-white">A4:</label>
+                    <input type="number" id="tuner-a4-frequency" value="440" min="400" max="480" step="1" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 w-20 text-center">
+                </div>
+                <div id="tuner-note-display" class="tuner-note-display">--</div>
+                <div id="tuner-cents-display" class="tuner-cents-display">--</div>
+                <div class="tuner-needle-container">
+                    <div id="tuner-range-indicator-flat" class="tuner-range-indicator flat" style="width: 50%;"></div>
+                    <div id="tuner-range-indicator-sharp" class="tuner-range-indicator sharp" style="width: 50%;"></div>
+                    <div class="tuner-center-line"></div>
+                    <div id="tuner-needle" class="tuner-needle" style="transform: rotate(0deg);"></div>
+                </div>
+                <button id="start-tuner-button" class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 transition duration-300 mt-4">
+                    Iniciar Afinador
+                </button>
+            </div>
+        </div>
+        
+        <div id="metronome-modal" class="metronome-modal hidden">
+            <div class="metronome-content">
+                <button id="metronome-close-button" class="metronome-close-button">&times;</button>
+                <h2 class="text-2xl font-bold mb-4 text-white">Metrónomo</h2>
+                <div class="metronome-display text-white">
+                    <span id="bpm-display">120</span> BPM
+                </div>
+                <div id="beat-indicators" class="flex justify-center mb-4"></div>
+                <div class="metronome-controls">
+                    <input type="range" id="bpm-slider" min="40" max="240" value="120">
+                    <label for="bpm-slider" class="text-white">Ajustar BPM</label>
+                </div>
+                <div class="metronome-controls mt-4">
+                    <label for="beats-per-measure-select" class="text-white">Compases por medida:</label>
+                    <select id="beats-per-measure-select" class="p-2 rounded-md bg-gray-700 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
+                <button id="metronome-button" class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 transition duration-300 mt-4">
+                    Iniciar
+                </button>
+            </div>
+        </div>
+
+        <div id="chord-options-modal" class="chord-options-modal hidden">
+            <div class="chord-options-content">
+                <button id="close-chord-options-button" class="chord-options-close-button">&times;</button>
+                <h2 id="chord-options-title" class="text-2xl font-bold mb-4 text-white">Opciones de Acorde</h2>
+                <div id="chord-options-container" class="flex flex-wrap justify-center gap-4">
+                    </div>
+            </div>
+        </div>
+
+        <footer class="app-footer">
+            <p>&copy; 2023 G-Tools. All rights reserved.</p>
+        </footer>
     </div>
-  );
-};
+    
+    <script src="script.js"></script>
+</body>
+</html>
